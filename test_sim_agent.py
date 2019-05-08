@@ -5,7 +5,7 @@ import pommerman
 from pommerman import agents
 from typing import List, Dict
 from pommerman.constants import Action
-from sim_agent import SimAgent, _Other, _ItemType, _Pos, _initial_bomb_life, _agent_id_type
+from sim_agent import SimAgent, _Other, _ItemType, _Pos, _initial_bomb_life, _AgentIdType
 
 
 class _IdleAgent(agents.BaseAgent):
@@ -87,7 +87,7 @@ class TestSimAgent(unittest.TestCase):
 
             agent_index_to_id = {i: state[i]['board'][state[i]['position'][0]][state[i]['position'][1]]
                                  for i in range(len(state))}
-            id_to_other: Dict[_agent_id_type, _Other] = {}
+            id_to_other: Dict[_AgentIdType, _Other] = {}
             first_step = True
             while not done:
                 if render:
