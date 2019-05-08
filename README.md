@@ -37,19 +37,19 @@ The recorded information of SimAgent is:
 
     * `_Pos self.pos` The position of a bomb
     * `_Other self.bomber` The bomber of a bomb
-    * `bool self.is_moving` The moving state of a bomb (True *once the bomb has been moved before*)
-    * `_blast_strength_type self.blast_strength` The blast strength of a bomb
-    * `_bomb_life_type self.life` The life of a bomb **(This may be INACCURATE when `is_moving`)**
+    * `bool self.has_been_moved` The moving state of a bomb (True *once the bomb has been moved before*)
+    * `_BlastStrengthType self.blast_strength` The blast strength of a bomb
+    * `_BombLifeType self.life` The life of a bomb **(This may be INACCURATE when the bomb `has_been_moved`)**
 
 * `List[_Other] self._others`
 
     A list of other agents in the game. The information of `_Other()` is:
 
     * `_Pos self.pos`: The position of another agent
-    * `_agent_id_type self.id`: The agent id of another agent
-    * `_ammo_type self.ammo` The number of ammo of another agent **(This may be INACCURATE)**
-    * `_bomb_life_type self.can_kick`: The aiblity to kick bombs of another agent **(This may be INACCURATE)**
-    * `_blast_strength_type self.blast_strength`: The blast strength of another anget **(This may be INACCURATE)**
+    * `_AgentIdType self.id`: The agent id of another agent
+    * `_AmmoType self.ammo` The number of ammo of another agent **(This may be INACCURATE)**
+    * `_BombLifeType self.can_kick`: The aiblity to kick bombs of another agent **(This may be INACCURATE)**
+    * `_BlastStrengthType self.blast_strength`: The blast strength of another anget **(This may be INACCURATE)**
 
 ## Test
 
