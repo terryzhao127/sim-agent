@@ -77,7 +77,7 @@ python test_sim_agent.py TestSimAgent._test_simulation_by_player_agent
 
 1.  **The items of another agent gets are partially observable.** It is possible for an agent to get an item while no others see: if at some step, these three things happen at the same time: *a box is destroyed by flame of bombs*, *an agent move to the position of this box* and *there is an item below this box*.
 
-    Thus, when this kind of situations happens, these information of agent simulation cannot be accurate:
+    Thus, when this kind of situations happen, these information of agent simulation cannot be accurate:
 
     1. ammo
     1. blast strength
