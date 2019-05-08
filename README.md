@@ -37,8 +37,8 @@ The recorded information of SimAgent is:
 
     * `_Pos self.pos` The position of a bomb
     * `_Other self.bomber` The bomber of a bomb
-    * `bool self.has_been_moved` The moving state of a bomb (True *once the bomb has been moved before*)
     * `_BlastStrengthType self.blast_strength` The blast strength of a bomb
+    * `bool self.has_been_moved` The moving state of a bomb (True *once the bomb has been moved before*)
     * `_BombLifeType self.life` The life of a bomb **(This may be INACCURATE when the bomb `has_been_moved`)**
 
 * `List[_Other] self._others`
