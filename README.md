@@ -101,7 +101,7 @@ python test_sim_agent.py TestSimAgent._test_simulation_by_player_agent
     1. If a bomb *has not been moved before*, when there is a zero `bomb_life` on the same position as the bomb on the board, do addtion to the corresponding agent.
     1. If a bomb *has been moved before*, when its `life` becomes zero, do addtion to the corresponding agent.
 
-    So the sim_agent uses `life` of a bomb to test whether a moved bomb *has exploded*, despite it is inaccurate either (because the bomb can be exploded in a chain).
+    So the `SimAgent` uses `life` of a bomb to test whether a moved bomb *has exploded*, despite it is inaccurate either (because the bomb can be exploded in a chain).
 
 ## Citation
 
