@@ -22,7 +22,7 @@ To use the SimAgent, all you need to do is:
 
 ### Details of SimAgent
 
-The recorded information of SimAgent is:
+The recorded information of `SimAgent` is:
 
 * `List[_Item] self._items`
 
