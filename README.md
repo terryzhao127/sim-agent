@@ -1,8 +1,6 @@
-
-
 # Sim Agent
 
-The observation of agents in Pommerman is not the same as the game state. Not only can the items (such as Extra Bomb item) not be seen, but agents can not know the number of ammo others have with only the current observation. However, we can predict most of them by preceding observations, which the SimAgent in this repo do.
+The observation of agents in Pommerman is not the same as the game state. Not only can the items (such as Extra Bomb item) not be seen, but agents cannot know the number of ammo others have with only the current observation. However, we can simulate most of them by preceding observations, which the `SimAgent` in this repo do.
 
 However, there are some inevitable limitations which are [explained here](#explation-for-inaccuracy)
 
@@ -32,18 +30,17 @@ The recorded information of SimAgent is:
 
     * `_Pos self.pos` The position of an item
     * `_ItemType self.type` The type of an item
-    
+
 * `List[_Bomb] self._bombs`
 
     A list of bombs which are observable on the board. The information of `_Bomb()` is:
 
     * `_Pos self.pos` The position of a bomb
     * `_Other self.bomber` The bomber of a bomb
-    * `bool self.is_moving` The moving state of a bomb
+    * `bool self.is_moving` The moving state of a bomb (True *once the bomb has been moved before*)
+    * `_blast_strength_type self.blast_strength` The blast strength of a bomb
     * `_bomb_life_type self.life` The life of a bomb **(This may be INACCURATE when `is_moving`)**
-    * `_blast_strength_type self.blast_strength` The blast strength of a bomb **(This may be INACCURATE when `is_moving`)**
 
-    
 * `List[_Other] self._others`
 
     A list of other agents in the game. The information of `_Other()` is:
@@ -56,7 +53,7 @@ The recorded information of SimAgent is:
 
 ## Test
 
-Explain how to run the automated tests for this system
+For the correctness of the simulation, tests are necessary.
 
 ### Normal Test
 
@@ -78,30 +75,48 @@ python test_sim_agent.py TestSimAgent._test_simulation_by_player_agent
 
 **The simulation is impossible to be the perfect of the real states of others due to these reasons:**
 
-1.  It is possible for an agent get an item while no others see: if at some step, a box is destroyed by flame of bombs
-, a agent move to the position of this box and get the hidden item below the box.
+1.  **The items of another agent gets are partially observable.** It is possible for an agent to get an item while no others see: if at some step, these three things happen at the same time: *a box is destroyed by flame of bombs*, *an agent move to the position of this box* and *there is an item below this box*.
 
-    Thus, when the situations happens, these information of agent simulation cannot be exact:
+    Thus, when this kind of situations happens, these information of agent simulation cannot be accurate:
 
     1. ammo
     1. blast strength
     1. the ability to kick a bomb
-    
-    In other words, the state of what items a agent get is **partially observable**.
-    However, after these hidden situations, the information of 2 and 3 can be observed as soon as these events happen:
-    
+
+    However, the information of 2 and 3 can be observed as soon as these events happen:
+
     1. The agent lays a new bomb.
     1. The agent kicks a bomb.
-    
-    while the information of 1 can be more exact as many bombs a agent laid as possible.
-    So the tests should of these information of agent should be based on these events or cases.
 
-2.  Just with the observations of the game, it is impossible to perfectly to simulate the move of a bomb, because it
- has lots of things to do with the internal rules of agents and bombs moving. But it is needed for the program to denote
- whether a bomb is exploded and then necessary for simulating number of ammo of an agent. So the sim_agent uses life of
- a bomb to test whether a moving is exploded, despite it is inaccurate either (because the bomb can be exploded in a
- chain).
- 
+    while the information of 1 can be more accurate as the agent lays more bombs. So the tests should be based on these events or cases.
+
+2.  **The moving states of bombs are partially observable.** Just with the observations of the game, it is impossible to perfectly simulate the move of a bomb, because it has lots of things to do with the internal forward model and other internal inaccessible states.
+
+    However, it is necessary for `SimAgent` to simulate the number of ammo of another agent.
+
+    To simulate the number of ammo, besides keeping track of Extra Bomb items an agent has got, you must also record states of bombs the agent has laid. When an agent lays a bomb, its number of ammo reduces one. When an agent's bomb explodes, its number of ammo increases one.
+
+    The ammo reduction can be accurately simulated, while the ammo increment cannot. Because the ammo increment is detected by checking whether there is a zero `bomb_life` on the same position as the bomb on the board, while we cannot know the accurate next position of a moved bomb. Thus, the `SimAgent` takes these two strategies:
+
+    1. If a bomb *has not been moved before*, when there is a zero `bomb_life` on the same position as the bomb on the board, do addtion to the corresponding agent.
+    1. If a bomb *has been moved before*, when its `life` becomes zero, do addtion to the corresponding agent.
+
+    So the sim_agent uses `life` of a bomb to test whether a moved bomb *has exploded*, despite it is inaccurate either (because the bomb can be exploded in a chain).
+
+## Citation
+
+For using codes in the repo, please cite it as follows:
+```
+@misc{tianyu2019simagent,
+  author = {Tianyu Zhao},
+  title = {Sim Agent},
+  year = {2019},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/guikarist/sim-agent}}
+}
+```
+
 ## Reference
 
 [Pommerman Environment](https://www.pommerman.com/)
