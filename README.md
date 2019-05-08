@@ -16,11 +16,11 @@ conda activate pommerman
 
 ### Usage
 
-To use the SimAgent, all you need to do is:
+To use the Sim Agent, all you need to do is:
 1. Subclass the `SimAgent` class in `sim_agent.py`.
 1. Implement the `_act(self, obs, action_space)` method. Or after investigating the logics, you can override `act(self, obs, action_space)` for advanced usages. 
 
-### Details of SimAgent
+### Details of Sim Agent
 
 The recorded information of `SimAgent` is:
 
