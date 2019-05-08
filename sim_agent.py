@@ -98,13 +98,13 @@ class _Item(object):
 
 
 class _Bomb(object):
-    __slots__ = ['bomber', 'pos', 'is_moving', 'blast_strength', 'life']
+    __slots__ = ['bomber', 'pos', 'has_been_moved', 'blast_strength', 'life']
 
-    def __init__(self, bomber: _Other, pos: _Pos, is_moving: bool, blast_strength: _blast_strength_type,
+    def __init__(self, bomber: _Other, pos: _Pos, has_been_moved: bool, blast_strength: _blast_strength_type,
                  life: _bomb_life_type):
         self.bomber = bomber
         self.pos = pos
-        self.is_moving = is_moving
+        self.has_been_moved = has_been_moved
         self.blast_strength = blast_strength
         self.life = life
 
@@ -228,18 +228,18 @@ class SimAgent(BaseAgent):
         # Update the moving state of bombs
         new_moving_bombs = []
         for bomb in self._bombs:
-            if not bomb.is_moving:
+            if not bomb.has_been_moved:
                 for other in self._others:
                     if other.pos != bomb.pos and \
                             self._board[bomb.pos[0]][bomb.pos[1]] == other.id:
                         # A bomb is kicked
-                        bomb.is_moving = True
+                        bomb.has_been_moved = True
                         new_moving_bombs.append(bomb)
 
         # Get exploded bombs
         exploded_bomb = []
         for bomb in self._bombs:
-            if bomb.is_moving:
+            if bomb.has_been_moved:
                 # Use bomb life to predict whether a bomb is exploded
                 if bomb.life == _end_bomb_life:
                     exploded_bomb.append(bomb)
