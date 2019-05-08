@@ -48,7 +48,7 @@ The recorded information of SimAgent is:
     * `_Pos self.pos`: The position of another agent
     * `_AgentIdType self.id`: The agent id of another agent
     * `_AmmoType self.ammo` The number of ammo of another agent **(This may be INACCURATE)**
-    * `_BombLifeType self.can_kick`: The aiblity to kick bombs of another agent **(This may be INACCURATE)**
+    * `_BombLifeType self.can_kick`: The ability to kick bombs of another agent **(This may be INACCURATE)**
     * `_BlastStrengthType self.blast_strength`: The blast strength of another anget **(This may be INACCURATE)**
 
 ## Test
