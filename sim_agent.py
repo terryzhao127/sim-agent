@@ -4,17 +4,17 @@ from enum import Enum
 from typing import Dict, Tuple, List, NewType
 
 # Environmental settings
-_blast_strength_type = float
-_agent_id_type = int
-_ammo_type = int
-_bomb_life_type = float
+_BlastStrengthType = float
+_AgentIdType = int
+_AmmoType = int
+_BombLifeType = float
 
 _initial_ammo = 1
 _initial_kick_ability = False
 _initial_bomb_life = DEFAULT_BOMB_LIFE
 _initial_blast_strength = DEFAULT_BLAST_STRENGTH
 _bomb_life_reduction = 1
-_end_bomb_life = _bomb_life_type(0)
+_end_bomb_life = _BombLifeType(0)
 _bomb_value = Item.Bomb.value
 _passage_value = Item.Passage.value
 _enable_kick_value = Item.Kick.value
@@ -53,10 +53,10 @@ class _Other(object):
     __slots__ = ['id', 'pos', 'ammo', 'blast_strength', 'can_kick']
 
     def __init__(self,
-                 other_id: _agent_id_type,
+                 other_id: _AgentIdType,
                  pos: _Pos,
-                 ammo: _ammo_type,
-                 blast_strength: _blast_strength_type,
+                 ammo: _AmmoType,
+                 blast_strength: _BlastStrengthType,
                  can_kick: bool):
         self.id = other_id
         self.pos = pos
@@ -100,8 +100,8 @@ class _Item(object):
 class _Bomb(object):
     __slots__ = ['bomber', 'pos', 'has_been_moved', 'blast_strength', 'life']
 
-    def __init__(self, bomber: _Other, pos: _Pos, has_been_moved: bool, blast_strength: _blast_strength_type,
-                 life: _bomb_life_type):
+    def __init__(self, bomber: _Other, pos: _Pos, has_been_moved: bool, blast_strength: _BlastStrengthType,
+                 life: _BombLifeType):
         self.bomber = bomber
         self.pos = pos
         self.has_been_moved = has_been_moved
@@ -127,7 +127,7 @@ class SimAgent(BaseAgent):
         self._items: List[_Item] = []
         self._others: List[_Other] = []
         self._bombs: List[_Bomb] = []
-        self._id_to_other: Dict[_agent_id_type, _Other] = {}
+        self._id_to_other: Dict[_AgentIdType, _Other] = {}
         self._is_first_action = True
 
         # Initialized in act()
@@ -313,7 +313,7 @@ class SimAgent(BaseAgent):
                     other.ammo -= 1
 
     @staticmethod
-    def _get_agent_pos(board, agent_id: _agent_id_type) -> _Pos:
+    def _get_agent_pos(board, agent_id: _AgentIdType) -> _Pos:
         """
         Return position of agent by its agent_id. If the agent_id does not exist, None is returned.
         :param board: Game board
