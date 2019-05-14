@@ -10,7 +10,8 @@ However, there are some inevitable limitations which are [explained here](#expla
 
 ```
 git clone --recurse-submodules git@github.com:guikarist/sim-agent.git
-conda env create -f env.yml
+cd sim-agent
+conda env create -f pommerman/env.yml
 conda activate pommerman
 ```
 
