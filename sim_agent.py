@@ -1,143 +1,39 @@
-from pommerman.agents import BaseAgent
-from pommerman.constants import DEFAULT_BOMB_LIFE, DEFAULT_BLAST_STRENGTH, Item
-from enum import Enum
+from __future__ import annotations
 from typing import Dict, Tuple, List, NewType
+from ast import literal_eval
+from env_related import *
+from enum import Enum
 
-# Environmental settings
-_BlastStrengthType = float
-_AgentIdType = int
-_AmmoType = int
-_BombLifeType = float
-
-_initial_ammo = 1
-_initial_kick_ability = False
-_initial_bomb_life = DEFAULT_BOMB_LIFE
-_initial_blast_strength = DEFAULT_BLAST_STRENGTH
-_bomb_life_reduction = 1
-_end_bomb_life = _BombLifeType(0)
-_bomb_value = Item.Bomb.value
-_passage_value = Item.Passage.value
-_enable_kick_value = Item.Kick.value
-_add_bomb_value = Item.ExtraBomb.value
-_increase_range_value = Item.IncrRange.value
-
-_board_obs = 'board'
-_enemies_obs = 'enemies'
-_teammates_obs = 'teammate'
-_alive_agents_obs = 'alive'
-_bomb_life_obs = 'bomb_life'
-_bomb_blast_strength_obs = 'bomb_blast_strength'
-
-_Pos = NewType('_Pos', Tuple[int, int])
+import pommerman
+import random
+import json
 
 
-class _ItemType(Enum):
-    ADD_BOMB = _add_bomb_value
-    INCREASE_RANGE = _increase_range_value
-    ENABLE_KICK = _enable_kick_value
+# TODO: complete annotations
 
-    @classmethod
-    def contains(cls, value):
-        return any(value == item.value for item in cls)
-
-    @classmethod
-    def get_type(cls, value):
-        # noinspection PyTypeChecker
-        for _, item in cls.__members__.items():
-            if item.value == value:
-                return item
-        return None
-
-
-class _Other(object):
-    __slots__ = ['id', 'pos', 'ammo', 'blast_strength', 'can_kick']
-
-    def __init__(self,
-                 other_id: _AgentIdType,
-                 pos: _Pos,
-                 ammo: _AmmoType,
-                 blast_strength: _BlastStrengthType,
-                 can_kick: bool):
-        self.id = other_id
-        self.pos = pos
-        self.ammo = ammo
-        self.blast_strength = blast_strength
-        self.can_kick = can_kick
-
-    def __hash__(self):
-        return hash(self.id)
-
-    def __eq__(self, other):
-        return self.id == other.id
-
-    def add_ability(self, item_type: _ItemType):
-        if item_type == _ItemType.ADD_BOMB:
-            self.ammo += 1
-        elif item_type == _ItemType.ENABLE_KICK:
-            self.can_kick = True
-        elif item_type == _ItemType.INCREASE_RANGE:
-            self.blast_strength += 1
-        else:
-            raise TypeError('Invalid type for item_type in add_ability()')
-
-
-class _Item(object):
-    __slots__ = ['type', 'pos']
-
-    def __init__(self, item_type: _ItemType, pos: _Pos):
-        self.type = item_type
-        self.pos = pos
-
-    def __hash__(self):
-        return hash(str(self.type.value) + str(self.pos))
-
-    def __eq__(self, other):
-        return self.type.value == other.type.value and \
-               self.pos[0] == other.pos[0] and \
-               self.pos[1] == other.pos[1]
-
-
-class _Bomb(object):
-    __slots__ = ['bomber', 'pos', 'has_been_moved', 'blast_strength', 'life']
-
-    def __init__(self, bomber: _Other, pos: _Pos, has_been_moved: bool, blast_strength: _BlastStrengthType,
-                 life: _BombLifeType):
-        self.bomber = bomber
-        self.pos = pos
-        self.has_been_moved = has_been_moved
-        self.blast_strength = blast_strength
-        self.life = life
-
-    def __hash__(self):
-        return hash(str(self.bomber.id) + str(self.pos))
-
-    def __eq__(self, other):
-        return self.bomber.id == other.bomber.id and \
-               self.pos[0] == other.pos[0] and \
-               self.pos[1] == other.pos[1]
-
-    def update_life(self):
-        self.life -= _bomb_life_reduction
-
-
-class SimAgent(BaseAgent):
-    def __init__(self):
+class SimAgent(pommerman.agents.BaseAgent):
+    def __init__(self, create_sim_env: bool = False):
         super(SimAgent, self).__init__()
 
         self._items: List[_Item] = []
-        self._others: List[_Other] = []
+        self._agents: List[_Agent] = []
+        self._dead_agents: List[_Agent] = []
         self._bombs: List[_Bomb] = []
-        self._id_to_other: Dict[_AgentIdType, _Other] = {}
+        self._id_to_agent: Dict[AgentIdType, _Agent] = {}
+
         self._is_first_action = True
+        self._create_sim_env = create_sim_env
+
+        # Initialized in init_agent()
+        self._sim_env = None
 
         # Initialized in act()
         self._last_board = None
         self._board = None
         self._bomb_life = None
         self._bomb_blast_strength = None
-        self._enemies = None
-        self._teammates = None
         self._alive_agents = None
+        self._step_count = None
 
     def act(self, obs, action_space):
         # Before taking an action
@@ -145,11 +41,15 @@ class SimAgent(BaseAgent):
 
         if self._is_first_action:
             self._is_first_action = False
-            self._init_others()
+            self._init_agents()
         else:
             missing_items = self._update_items()
             exploded_bombs, new_bombs, new_moving_bombs = self._update_bombs()
-            self._update_others(missing_items, exploded_bombs, new_bombs, new_moving_bombs)
+            self._update_agents(missing_items, exploded_bombs, new_bombs, new_moving_bombs)
+
+        if self._create_sim_env:
+            # Update the simulated environment
+            self._update_sim_env(obs)
 
         # Take an action
         action = self._act(obs, action_space)
@@ -159,34 +59,138 @@ class SimAgent(BaseAgent):
 
         return action
 
+    def init_agent(self, id_, game_type) -> None:
+        super(SimAgent, self).init_agent(id_, game_type)
+
+        self._sim_env = pommerman.make(pommerman.REGISTRY[game_type.value], self._generate_agents())
+        self._sim_env.reset()
+
     def reset(self, *args, **kwargs):
         self._character.reset(*args, **kwargs)
 
         self._items.clear()
-        self._others.clear()
+        self._agents.clear()
+        self._dead_agents.clear()
         self._bombs.clear()
-        self._id_to_other.clear()
+        self._id_to_agent.clear()
+
         self._is_first_action = True
 
         self._last_board = None
         self._board = None
         self._bomb_life = None
         self._bomb_blast_strength = None
-        self._enemies = None
-        self._teammates = None
         self._alive_agents = None
+        self._step_count = None
 
     def _act(self, obs, action_space):
         """The subclass should implement this class"""
         raise NotImplementedError
 
+    def _update_sim_env(self, obs):
+        sim_state = self._create_sim_state(obs)
+        self._sim_env._init_game_state = sim_state
+        self._sim_env.set_json_info()
+        self._sim_env._intended_actions = [i for i in literal_eval(sim_state[intended_actions_obs])]
+
+    def _create_sim_state(self, obs):
+        def append_agent(_agents, _is_alive):
+            if agent.id != self._character.agent_id:
+                _agents.append({
+                    'agent_id': agent.id,
+                    'is_alive': _is_alive,
+                    'position': agent.pos,
+                    'ammo': agent.ammo,
+                    'blast_strength': agent.blast_strength,
+                    'can_kick': agent.can_kick
+                })
+            else:
+                _agents.append({
+                    'agent_id': agent.id,
+                    'is_alive': _is_alive,
+                    'position': agent.pos,
+                    'ammo': obs[ammo_obs],
+                    'blast_strength': obs[blast_strength_obs],
+                    'can_kick': obs[can_kick_obs]
+                })
+
+        board = self._board.tolist()
+        bomb_life = self._bomb_life.tolist()
+        bomb_blast_strength = self._bomb_blast_strength.tolist()
+        bombs_on_board, flames_ob_board = SimAgent._find_items(board, bomb_life, bomb_blast_strength)
+        agents = []
+        bombs = []
+        flames = []
+
+        # Agents
+        for agent in self._agents:
+            append_agent(agents, True)
+        for agent in self._dead_agents:
+            append_agent(agents, False)
+
+        # Bombs
+        for bomb_on_board in bombs_on_board:
+            position = bomb_on_board[0]
+
+            recorded_bomb = None
+            for bomb in self._bombs:
+                if bomb.pos == position and not bomb.has_been_moved:
+                    recorded_bomb = bomb
+
+            if recorded_bomb is None:
+                bomber_id = random.choice(agents)[agent_id_obs]
+            else:
+                bomber_id = recorded_bomb.bomber.id
+
+            bombs.append({
+                'position': [position[0], position[1]],
+                'bomber_id': bomber_id,
+                'life': bomb_on_board[1],
+                'blast_strength': bomb_on_board[2],
+                'moving_direction': None  # TODO: Write docs to explain the inaccuracy.
+            })
+
+        # Flames
+        for flame_obs in flames_ob_board:
+            position = flame_obs
+            flames.append({
+                'position': [position[0], position[1]],
+                'life': 2  # TODO: Write docs to explain the inaccuracy.
+            })
+
+        items = [
+            [list(item.pos), item.type.value]
+            for item in self._items
+        ]
+
+        state = {
+            'board_size': self._board.shape[0],
+            'step_count': self._step_count,
+            'board': board,
+            'agents': agents,
+            'bombs': bombs,
+            'flames': flames,
+            'items': items,
+            'intended_actions': []  # This is not considered in env.set_json_info(), so it can be ignored.
+        }
+
+        for key, value in state.items():
+            state[key] = json.dumps(value, cls=pommerman.utility.PommermanJSONEncoder)
+        return state
+
+    def _generate_agents(self):
+        num_other_agents = len(self._character.enemies)
+        if self._character.teammate != agent_dummy:
+            num_other_agents += 1
+        agents = [_DummyAgent() for _ in range(num_other_agents + 1)]
+        return agents
+
     def _init_obs(self, obs):
-        self._board = obs[_board_obs]
-        self._enemies = obs[_enemies_obs]
-        self._bomb_life = obs[_bomb_life_obs]
-        self._teammates = obs[_teammates_obs]
-        self._alive_agents = obs[_alive_agents_obs]
-        self._bomb_blast_strength = obs[_bomb_blast_strength_obs]
+        self._board = obs[board_obs]
+        self._bomb_life = obs[bomb_life_obs]
+        self._alive_agents = obs[alive_agents_obs]
+        self._bomb_blast_strength = obs[bomb_blast_strength_obs]
+        self._step_count = obs[step_count_obs]
 
     def _update_items(self) -> List[_Item]:
         """
@@ -229,11 +233,12 @@ class SimAgent(BaseAgent):
         new_moving_bombs = []
         for bomb in self._bombs:
             if not bomb.has_been_moved:
-                for other in self._others:
-                    if other.pos != bomb.pos and \
-                            self._board[bomb.pos[0]][bomb.pos[1]] == other.id:
+                for agent in self._agents:
+                    if agent.pos != bomb.pos and \
+                            self._board[bomb.pos[0]][bomb.pos[1]] == agent.value:
                         # A bomb is kicked
                         bomb.has_been_moved = True
+                        bomb.first_moving_direction = self._get_moving_direction(agent)
                         new_moving_bombs.append(bomb)
 
         # Get exploded bombs
@@ -241,86 +246,214 @@ class SimAgent(BaseAgent):
         for bomb in self._bombs:
             if bomb.has_been_moved:
                 # Use bomb life to predict whether a bomb is exploded
-                if bomb.life == _end_bomb_life:
+                if bomb.life == end_bomb_life:
                     exploded_bomb.append(bomb)
             else:
                 # The position of stopped bomb is accurate.
-                if self._bomb_life[bomb.pos[0]][bomb.pos[1]] == _end_bomb_life:
+                if self._bomb_life[bomb.pos[0]][bomb.pos[1]] == end_bomb_life:
                     exploded_bomb.append(bomb)
         for bomb in exploded_bomb:
             self._bombs.remove(bomb)
 
         # Get new laid bombs
         new_bombs = []
-        for other in self._others:
-            if self._bomb_life[other.pos[0]][other.pos[1]] == _initial_bomb_life:
-                new_bomb = _Bomb(other, other.pos, False,
-                                 self._bomb_blast_strength[other.pos[0]][other.pos[1]], _initial_bomb_life)
+        for agent in self._agents:
+            if self._bomb_life[agent.pos[0]][agent.pos[1]] == initial_bomb_life:
+                new_bomb = _Bomb(agent, agent.pos, self._bomb_blast_strength[agent.pos[0]][agent.pos[1]],
+                                 initial_bomb_life)
                 self._bombs.append(new_bomb)
                 new_bombs.append(new_bomb)
 
         return exploded_bomb, new_bombs, new_moving_bombs
 
-    def _init_others(self):
-        """Initialize simulation of others"""
-        for other_agent in self._enemies + [self._teammates]:
-            agent_pos = SimAgent._get_agent_pos(self._board, other_agent.value)
+    def _init_agents(self):
+        """Initialize simulation of agents"""
+        for agent_value in self._alive_agents:
+            agent_pos = SimAgent._get_agent_pos(self._board, agent_value)
             if agent_pos is not None:
-                other = _Other(other_agent.value, agent_pos, _initial_ammo, _initial_blast_strength,
-                               _initial_kick_ability)
-                self._id_to_other[other_agent.value] = other
-                self._others.append(other)
+                agent = _Agent(agent_value_to_id(agent_value), agent_value, agent_pos, initial_ammo,
+                               initial_blast_strength, initial_kick_ability)
+                self._id_to_agent[agent.id] = agent
+                self._agents.append(agent)
 
-    def _update_others(self,
+    def _update_agents(self,
                        missing_items: List[_Item],
                        exploded_bombs: List[_Bomb],
                        new_bombs: List[_Bomb],
                        new_moving_bombs: List[_Bomb]):
         """
-        Update simulation of others
+        Update simulation of agents
         :param missing_items: A list of items missing in the current step but present in the last step
         :param exploded_bombs: A list of bombs explode in the current step
         :param new_bombs: A list of bombs newly laid in the current step
         :param new_moving_bombs: A list of bombs able to move in the current step but unable in the last step
         """
-        # Remove dead others
-        self._others = list(other for other in self._others if other.id in self._alive_agents)
+        # Remove dead agents
+        self._dead_agents = list(agent for agent in self._agents if agent.value not in self._alive_agents)
+        self._agents = list(set(self._agents) - set(self._dead_agents))
 
         # Update position
-        for other in self._others:
-            other.pos = SimAgent._get_agent_pos(self._board, other.id)
+        for agent in self._agents:
+            agent.pos = SimAgent._get_agent_pos(self._board, agent.value)
 
         # Update ability
         for item in missing_items:
-            for other in self._others:
-                if other.pos == item.pos:
-                    other.add_ability(item.type)
+            for agent in self._agents:
+                if agent.pos == item.pos:
+                    agent.add_ability(item.type)
         for bomb in new_bombs:
-            other = self._id_to_other[bomb.bomber.id]
-            if other.blast_strength <= bomb.blast_strength:
-                other.blast_strength = bomb.blast_strength
+            agent = self._id_to_agent[bomb.bomber.id]
+            if agent.blast_strength < bomb.blast_strength:
+                agent.blast_strength = bomb.blast_strength
         for bomb in new_moving_bombs:
-            self._id_to_other[bomb.bomber.id].can_kick = True
+            self._id_to_agent[bomb.bomber.id].can_kick = True
 
         # Update ammo
         for bomb in exploded_bombs:
-            for other in self._others:
-                if other == bomb.bomber:
-                    other.ammo += 1
+            for agent in self._agents:
+                if agent == bomb.bomber:
+                    agent.ammo += 1
         for bomb in new_bombs:
-            for other in self._others:
-                if other == bomb.bomber:
-                    other.ammo -= 1
+            for agent in self._agents:
+                if agent == bomb.bomber:
+                    agent.ammo -= 1
+
+    def _get_moving_direction(self, agent: _Agent) -> ActionType:
+        new_x, new_y = SimAgent._get_agent_pos(self._board, agent.value)
+        old_x, old_y = agent.pos
+
+        if new_x == old_x and new_y == old_y + 1:
+            return action_right
+        elif new_x == old_x and new_y == old_y - 1:
+            return action_left
+        elif new_x == old_x + 1 and new_y == old_y:
+            return action_down
+        else:
+            return action_up
 
     @staticmethod
-    def _get_agent_pos(board, agent_id: _AgentIdType) -> _Pos:
+    def _find_items(board, bomb_life, bomb_blast_strength):
+        bombs = []
+        flames = []
+
+        for row in range(len(board)):
+            for col in range(len(board[0])):
+                if bomb_life[row][col] != 0:
+                    bombs.append(((row, col), bomb_life[row][col], bomb_blast_strength[row][col]))
+                if board[row][col] == flame_value:
+                    flames.append((row, col))
+
+        return bombs, flames
+
+    @staticmethod
+    def _get_agent_pos(board, agent_value: AgentValueType) -> _Pos:
         """
         Return position of agent by its agent_id. If the agent_id does not exist, None is returned.
         :param board: Game board
-        :param agent_id: Agent ID
+        :param agent_value: Agent value on board
         :return: Position of agent
         """
         for row in range(len(board)):
             for col in range(len(board[0])):
-                if board[row][col] == agent_id:
+                if board[row][col] == agent_value:
                     return _Pos((row, col))
+
+
+class _DummyAgent(pommerman.agents.BaseAgent):
+    def act(self, obs, action_space):
+        pass
+
+
+_Pos = NewType('_Pos', Tuple[int, int])
+
+
+class _ItemType(Enum):
+    ADD_BOMB = add_bomb_value
+    INCREASE_RANGE = increase_range_value
+    ENABLE_KICK = enable_kick_value
+
+    @classmethod
+    def contains(cls, value):
+        return any(value == item.value for item in cls)
+
+    @classmethod
+    def get_type(cls, value):
+        # noinspection PyTypeChecker
+        for _, item in cls.__members__.items():
+            if item.value == value:
+                return item
+        return None
+
+
+class _Agent(object):
+    __slots__ = ['id', 'value', 'pos', 'ammo', 'blast_strength', 'can_kick']
+
+    def __init__(self,
+                 agent_id: AgentIdType,
+                 agent_value: AgentValueType,
+                 pos: _Pos,
+                 ammo: AmmoType,
+                 blast_strength: BlastStrengthType,
+                 can_kick: bool):
+        self.id = agent_id
+        self.value = agent_value
+        self.pos = pos
+        self.ammo = ammo
+        self.blast_strength = blast_strength
+        self.can_kick = can_kick
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def add_ability(self, item_type: _ItemType):
+        if item_type == _ItemType.ADD_BOMB:
+            self.ammo += 1
+        elif item_type == _ItemType.ENABLE_KICK:
+            self.can_kick = True
+        elif item_type == _ItemType.INCREASE_RANGE:
+            self.blast_strength += 1
+        else:
+            raise TypeError('Invalid type for item_type in add_ability()')
+
+
+class _Item(object):
+    __slots__ = ['type', 'pos']
+
+    def __init__(self, item_type: _ItemType, pos: _Pos):
+        self.type = item_type
+        self.pos = pos
+
+    def __hash__(self):
+        return hash(str(self.type.value) + str(self.pos))
+
+    def __eq__(self, other):
+        return self.type.value == other.type.value and \
+               self.pos[0] == other.pos[0] and \
+               self.pos[1] == other.pos[1]
+
+
+class _Bomb(object):
+    __slots__ = ['bomber', 'pos', 'has_been_moved', 'blast_strength', 'life', 'first_moving_direction']
+
+    def __init__(self, bomber: _Agent, pos: _Pos, blast_strength: BlastStrengthType,
+                 life: BombLifeType, has_been_moved=False, first_moving_direction=None) -> None:
+        self.bomber = bomber
+        self.pos = pos
+        self.has_been_moved = has_been_moved
+        self.blast_strength = blast_strength
+        self.life = life
+        self.first_moving_direction: ActionType = first_moving_direction
+
+    def __hash__(self):
+        return hash(str(self.bomber.id) + str(self.pos))
+
+    def __eq__(self, other):
+        return self.bomber.id == other.bomber.id and \
+               self.pos[0] == other.pos[0] and \
+               self.pos[1] == other.pos[1]
+
+    def update_life(self):
+        self.life -= bomb_life_reduction
