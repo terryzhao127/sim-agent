@@ -9,8 +9,6 @@ import random
 import json
 
 
-# TODO: complete annotations
-
 class SimAgent(pommerman.agents.BaseAgent):
     def __init__(self, create_sim_env: bool = False):
         super(SimAgent, self).__init__()
@@ -21,8 +19,8 @@ class SimAgent(pommerman.agents.BaseAgent):
         self._bombs: List[_Bomb] = []
         self._id_to_agent: Dict[AgentIdType, _Agent] = {}
 
-        self._is_first_action = True
-        self._create_sim_env = create_sim_env
+        self._is_first_action: bool = True
+        self._create_sim_env: bool = create_sim_env
 
         # Initialized in init_agent()
         self._sim_env = None
@@ -59,7 +57,7 @@ class SimAgent(pommerman.agents.BaseAgent):
 
         return action
 
-    def init_agent(self, id_, game_type) -> None:
+    def init_agent(self, id_, game_type):
         super(SimAgent, self).init_agent(id_, game_type)
 
         self._sim_env = pommerman.make(pommerman.REGISTRY[game_type.value], self._generate_agents())
@@ -147,7 +145,7 @@ class SimAgent(pommerman.agents.BaseAgent):
                 'bomber_id': bomber_id,
                 'life': bomb_on_board[1],
                 'blast_strength': bomb_on_board[2],
-                'moving_direction': None  # TODO: Write docs to explain the inaccuracy.
+                'moving_direction': None
             })
 
         # Flames
@@ -155,9 +153,10 @@ class SimAgent(pommerman.agents.BaseAgent):
             position = flame_obs
             flames.append({
                 'position': [position[0], position[1]],
-                'life': 2  # TODO: Write docs to explain the inaccuracy.
+                'life': 2
             })
 
+        # Items
         items = [
             [list(item.pos), item.type.value]
             for item in self._items
@@ -178,7 +177,7 @@ class SimAgent(pommerman.agents.BaseAgent):
             state[key] = json.dumps(value, cls=pommerman.utility.PommermanJSONEncoder)
         return state
 
-    def _generate_agents(self):
+    def _generate_agents(self) -> List[_DummyAgent]:
         num_other_agents = len(self._character.enemies)
         if self._character.teammate != agent_dummy:
             num_other_agents += 1
@@ -195,7 +194,7 @@ class SimAgent(pommerman.agents.BaseAgent):
     def _update_items(self) -> List[_Item]:
         """
         Update the observable items on the board
-        :return: A list of missing items which are present after last update
+        :return: A list of missing items which are present at the last step
         """
         # Get missing items
         missing_items = []
@@ -280,7 +279,7 @@ class SimAgent(pommerman.agents.BaseAgent):
                        missing_items: List[_Item],
                        exploded_bombs: List[_Bomb],
                        new_bombs: List[_Bomb],
-                       new_moving_bombs: List[_Bomb]):
+                       new_moving_bombs: List[_Bomb]) -> None:
         """
         Update simulation of agents
         :param missing_items: A list of items missing in the current step but present in the last step
