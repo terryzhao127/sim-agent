@@ -37,18 +37,19 @@ The recorded information of `SimAgent` is:
     A list of bombs which are observable on the board. The information of `_Bomb()` is:
 
     * `_Pos self.pos` The position of a bomb
-    * `_Other self.bomber` The bomber of a bomb
-    * `_BlastStrengthType self.blast_strength` The blast strength of a bomb
+    * `_Agent self.bomber` The bomber of a bomb
+    * `BlastStrengthType self.blast_strength` The blast strength of a bomb
+    * `ActionType self.first_moving_direction` The first moving direction of a bomb
     * `bool self.has_been_moved` The moving state of a bomb (True *once the bomb has been moved before*)
-    * `_BombLifeType self.life` The life of a bomb **(This may be INACCURATE when the bomb `has_been_moved`)**
+    * `BombLifeType self.life` The life of a bomb **(This may be INACCURATE when the bomb `has_been_moved`)**
 
 * `List[_Agent] self._agents`
 
     A list of alive agents in the game. The information of `_Agent()` is:
 
+    * `_Pos self.pos`: The agent position
     * `AgentIdType self.id` The agent id (e.g., `0`)
     * `AgentValueType self.value` The agent value (e.g., `10`)
-    * `_Pos self.pos`: The agent position
     * `AmmoType self.ammo` The number of ammo of an agent **(This may be INACCURATE)**
     * `bool self.can_kick`: The ability to kick bombs of an agent **(This may be INACCURATE)**
     * `BlastStrengthType self.blast_strength`: The blast strength of an anget **(This may be INACCURATE)**
