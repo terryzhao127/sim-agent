@@ -74,7 +74,7 @@ This will initialize games with one `PlayerAgent`, one `SimAgent` and two `_Idle
 python test_sim_agent.py TestSimAgent._test_simulation_by_player_agent
 ```
 
-## Explation for Inaccuracy
+## Explanation for Inaccuracy
 
 *The simulation is impossible to be perfect and here is an example:*
 
